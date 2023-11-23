@@ -1,0 +1,73 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+
+  #Jenkins
+  config.vm.define "jenkins" do |config|
+    config.vm.box = "ubuntu/focal64"
+    config.vm.provider "virtualbox" do |vb|
+      vb.name = "jenkins"
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+    config.vm.hostname = "jenkins"
+    config.vm.network "private_network", ip: "192.168.56.101", nic_type: "virtio"
+  end
+
+  #Tomcat
+  config.vm.define "tomcat" do |config|
+    config.vm.box = "ubuntu/focal64"
+    config.vm.provider "virtualbox" do |vb|
+      vb.name = "tomcat"
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+    config.vm.hostname = "tomcat"
+    config.vm.network "private_network", ip: "192.168.56.102", nic_type: "virtio"
+  end
+
+  #Docker
+  config.vm.define "docker" do |config|
+    config.vm.box = "ubuntu/focal64"
+    config.vm.provider "virtualbox" do |vb|
+      vb.name = "docker"
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+    config.vm.hostname = "docker"
+    config.vm.network "private_network", ip: "192.168.56.103", nic_type: "virtio"
+  end
+
+  #Ansible
+  config.vm.define "ansible" do |config|
+    config.vm.box = "ubuntu/focal64"
+    config.vm.provider "virtualbox" do |vb|
+      vb.name = "ansible"
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+    config.vm.hostname = "ansible"
+    config.vm.network "private_network", ip: "192.168.56.104", nic_type: "virtio"
+  end
+
+  #Kubernetes
+  config.vm.define "kube" do |config|
+    config.vm.box = "ubuntu/focal64"
+    config.vm.provider "virtualbox" do |vb|
+      vb.name = "kube"
+      vb.cpus = 2
+      vb.memory = 4000
+    end
+    config.vm.hostname = "kube"
+    config.vm.network "private_network", ip: "192.168.56.105", nic_type: "virtio"
+  end
+
+  # Enable SSH Password Authentication
+  config.vm.provision "shell", inline: <<-SHELL
+    sed -i 's/ChallengeResponseAuthentication no/ChallengeResponseAuthentication yes/g' /etc/ssh/sshd_config
+    sed -i 's/archive.ubuntu.com/ftp.daum.net/g' /etc/apt/sources.list
+    sed -i 's/security.ubuntu.com/ftp.daum.net/g' /etc/apt/sources.list
+    systemctl reload ssh
+  SHELL
+end
