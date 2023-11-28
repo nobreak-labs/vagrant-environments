@@ -30,6 +30,7 @@ end
 def configure_vm(config, name, cpus, memory, ip)
   config.vm.box = BOX_IMAGE
   config.vm.provider "virtualbox" do |vb|
+    vb.linked_clone = false
     vb.name = name
     vb.cpus = cpus
     vb.memory = memory

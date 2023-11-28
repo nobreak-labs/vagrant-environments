@@ -2,67 +2,51 @@
 # vi: set ft=ruby :
 
 # Configuration
-vm_provider = "virtualbox"
-vm_box_image = "ubuntu/jammy64"
+BOX_IMAGE = "ubuntu/jammy64"
 
-vm_name_prefix = "kube"
+VM_NAME_PREFIX = "kube"
 
-number_of_control_planes = 1
-number_of_nodes = 3
+NUMBER_OF_CONTROL_PLANES = 1
+NUMBER_OF_NODES = 3
 
-vm_subnet = "192.168.56."
+VM_SUBNET = "192.168.56."
 
-vm_control_plane_cpus = 2
-vm_control_plane_memory = 3072
-vm_node_cpus = 2
-vm_node_memory = 2560
+VM_CONTROL_PLANE_CPUS = 2
+VM_CONTROL_PLANE_MEMORY = 3072
+VM_NODE_CPUS = 2
+VM_NODE_MEMORY = 2560
 
-vm_control_plane_extra_disk_enabled = false
-vm_control_plane_extra_disk_size = 10240 # MB
-vm_node_extra_disk_enabled = false
-vm_node_extra_disk_size = 10240 # MB
+VM_CONTROL_PLANE_EXTRA_DISK_ENABLED = false
+VM_CONTROL_PLANE_EXTRA_DISK_SIZE = 10240 # MB
+VM_NODE_EXTRA_DISK_ENABLED = false
+VM_NODE_EXTRA_DISK_SIZE = 10240 # MB
+
+VAGRANT_VMS = (1..NUMBER_OF_CONTROL_PLANES).map do |i|
+  {
+    name: "#{VM_NAME_PREFIX}-control#{i}",
+    cpus: VM_CONTROL_PLANE_CPUS,
+    memory: VM_CONTROL_PLANE_MEMORY,
+    extra_disk_enabled: VM_CONTROL_PLANE_EXTRA_DISK_ENABLED,
+    extra_disk_size: VM_CONTROL_PLANE_EXTRA_DISK_SIZE,
+    ip: "#{VM_SUBNET}1#{i}"
+  }
+end
+
+VAGRANT_VMS += (1..NUMBER_OF_NODES).map do |i|
+  {
+    name: "#{VM_NAME_PREFIX}-node#{i}",
+    cpus: VM_NODE_CPUS,
+    memory: VM_NODE_MEMORY,
+    extra_disk_enabled: VM_NODE_EXTRA_DISK_ENABLED,
+    extra_disk_size: VM_NODE_EXTRA_DISK_SIZE,
+    ip: "#{VM_SUBNET}2#{i}"
+  }
+end
 
 Vagrant.configure("2") do |config|
-
-  # Kubernetes Control Planes
-  (1..number_of_control_planes).each do |i|
-    config.vm.define "#{vm_name_prefix}-control#{i}" do |node|
-      node.vm.hostname = "#{vm_name_prefix}-control#{i}"
-      node.vm.box = vm_box_image
-      node.vm.provider vm_provider do |vm|
-        vm.linked_clone = true
-        vm.name = "#{vm_name_prefix}-control#{i}"
-        vm.cpus = vm_control_plane_cpus
-        vm.memory = vm_control_plane_memory
-        if vm_control_plane_extra_disk_enabled == true
-          unless File.exist?('disks/control#{i}.vmdk')
-            vm.customize ['createmedium', 'disk', '--format', 'VMDK', '--filename', "disks/control#{i}.vmdk", '--size', vm_control_plane_extra_disk_size]
-          end
-          vm.customize ['storageattach', :id, '--storagectl', 'SCSI', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', "disks/control#{i}.vmdk"]
-        end
-      end
-      node.vm.network "private_network", ip: "#{vm_subnet}1#{i}", nic_type: "virtio"
-    end
-  end
-
-  # Kubernetes Nodes
-  (1..number_of_nodes).each do |i|
-    config.vm.define "#{vm_name_prefix}-node#{i}" do |node|
-      node.vm.hostname = "#{vm_name_prefix}-node#{i}"
-      node.vm.box = vm_box_image
-      node.vm.provider vm_provider do |vm|
-        vm.linked_clone = true
-        vm.name = "#{vm_name_prefix}-node#{i}"
-        vm.cpus = vm_node_cpus
-        vm.memory = vm_node_memory
-        if vm_node_extra_disk_enabled == true
-          unless File.exist?('disks/node#{i}.vmdk')
-            vm.customize ['createmedium', 'disk', '--format', 'VMDK', '--filename', "disks/node#{i}.vmdk", '--size', vm_node_extra_disk_size]
-          end
-          vm.customize ['storageattach', :id, '--storagectl', 'SCSI', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', "disks/node#{i}.vmdk"]
-        end
-      end
-      node.vm.network "private_network", ip: "#{vm_subnet}2#{i}", nic_type: "virtio"
+  VAGRANT_VMS.each do |vm|
+    config.vm.define vm[:name] do |machine|
+      configure_vm(machine, vm)
     end
   end
 
@@ -73,4 +57,21 @@ Vagrant.configure("2") do |config|
     sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
     systemctl restart ssh
   SHELL
+end
+
+def configure_vm(config, vm)
+  config.vm.hostname = vm[:name]
+  config.vm.box = BOX_IMAGE
+  config.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"
+  config.vm.provider "virtualbox" do |vb|
+    vb.linked_clone = false
+    vb.name = vm[:name]
+    vb.cpus = vm[:cpus]
+    vb.memory = vm[:memory]
+    if vm[:extra_disk_enabled] == true
+      unless File.exist?("disks/#{vm[:name]}.vmdk")
+        vb.customize ['createmedium', 'disk', '--format', 'VMDK', '--filename', "disks/#{vm[:name]}.vmdk", '--size', vm[:extra_disk_size]]
+      end
+    end
+  end
 end
