@@ -2,18 +2,18 @@
 
 ## 일반적인 작업 순서
 
-1. 적절한 경로(일반적으로 홈 디렉토리)에 작업할 빈 디렉토리 생성
-2. 생성한 디렉토리에 `Vagrantfile` 파일 생성
-3. 해당 디렉토리에서 `vagrant` 명령으로 VM 관리
+1. 적절한 경로(일반적으로 홈 디렉터리)에 작업할 빈 디렉터리 생성
+2. 생성한 디렉터리에 `Vagrantfile` 파일 생성
+3. 해당 디렉터리에서 `vagrant` 명령으로 VM 관리
 
 ## 초기화
 
-- `vagrant init`: 현재 디렉토리에 새로운 `Vagrantfile` 파일 생성, 베이스 이미지가 지정되지 않아 `vagrant up` 할 수 없음
+- `vagrant init`: 현재 디렉터리에 새로운 `Vagrantfile` 파일 생성, 베이스 이미지가 지정되지 않아 `vagrant up` 할 수 없음
 - `vagrant init <box_image>`: 특정 박스 이미지와 함께 `Vagrantfile` 파일 생성
   - [Vagrant Cloud](https://app.vagrantup.com/boxes/search) 이미지 검색
   - 예:
     - `vagrant init ubuntu/jammy64`
-    - `vagrant init rockylinux/9`,
+    - `vagrant init rockylinux/9`
 
 ```ruby
 # -*- mode: ruby -*-
@@ -24,7 +24,7 @@ Vagrant.configure("2") do |config|
 end
 ```
 
-## VM 정보확인
+## VM 정보 확인
 
 - `vagrant status`: VM 배포 상태 확인
 - `vagrant global-status`: 시스템의 `vagrant`로 배포된 모든 VM 상태 확인

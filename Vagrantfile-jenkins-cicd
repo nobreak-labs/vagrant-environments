@@ -5,7 +5,7 @@ Vagrant.configure("2") do |config|
 
   #Jenkins
   config.vm.define "jenkins" do |config|
-    config.vm.box = "ubuntu/focal64"
+    config.vm.box = "ubuntu/jammy64"
     config.vm.provider "virtualbox" do |vb|
       vb.name = "jenkins"
       vb.cpus = 2
@@ -17,7 +17,7 @@ Vagrant.configure("2") do |config|
 
   #Tomcat
   config.vm.define "tomcat" do |config|
-    config.vm.box = "ubuntu/focal64"
+    config.vm.box = "ubuntu/jammy64"
     config.vm.provider "virtualbox" do |vb|
       vb.name = "tomcat"
       vb.cpus = 2
@@ -29,7 +29,7 @@ Vagrant.configure("2") do |config|
 
   #Docker
   config.vm.define "docker" do |config|
-    config.vm.box = "ubuntu/focal64"
+    config.vm.box = "ubuntu/jammy64"
     config.vm.provider "virtualbox" do |vb|
       vb.name = "docker"
       vb.cpus = 2
@@ -41,7 +41,7 @@ Vagrant.configure("2") do |config|
 
   #Ansible
   config.vm.define "ansible" do |config|
-    config.vm.box = "ubuntu/focal64"
+    config.vm.box = "ubuntu/jammy64"
     config.vm.provider "virtualbox" do |vb|
       vb.name = "ansible"
       vb.cpus = 2
@@ -53,7 +53,7 @@ Vagrant.configure("2") do |config|
 
   #Kubernetes
   config.vm.define "kube" do |config|
-    config.vm.box = "ubuntu/focal64"
+    config.vm.box = "ubuntu/jammy64"
     config.vm.provider "virtualbox" do |vb|
       vb.name = "kube"
       vb.cpus = 2

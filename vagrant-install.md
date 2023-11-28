@@ -12,7 +12,13 @@
 - PowerShell v3+
 - .NET Framework 4.8+
 
-**Powershell**을 **관리자 권한**으로 실행
+PowerShell 버전 확인
+
+```powershell
+pwsh -Version
+```
+
+**PowerShell**을 **관리자 권한**으로 실행
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
