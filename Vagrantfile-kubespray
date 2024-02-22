@@ -69,9 +69,11 @@ def configure_vm(config, vm)
     vb.cpus = vm[:cpus]
     vb.memory = vm[:memory]
     if vm[:extra_disk_enabled] == true
-      unless File.exist?("disks/#{vm[:name]}.vmdk")
-        vb.customize ['createmedium', 'disk', '--format', 'VMDK', '--filename', "disks/#{vm[:name]}.vmdk", '--size', vm[:extra_disk_size]]
+      disk_path = "disks/#{vm[:name]}.vmdk"
+      unless File.exist?(disk_path)
+        vb.customize ['createmedium', 'disk', '--format', 'VMDK', '--filename', disk_path, '--size', vm[:extra_disk_size]]
       end
+      vb.customize ['storageattach', :id, '--storagectl', 'SCSI', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', disk_path]
     end
   end
 end
