@@ -6,16 +6,17 @@ Vagrant.configure("2") do |config|
   config.vm.define "openstack-aio" do |config|
     config.vm.box = "ubuntu/jammy64"
     config.vm.hostname = "openstack-aio"
-    config.vm.network "private_network", ip: "192.168.56.200", nic_type: "virtio" # Host-Only Network for kolla_external/internal enp0s8
-    config.vm.network "public_network" # Bridged Network for neutron_external enp0s9
+    config.vm.network "private_network", ip: "192.168.56.200", nic_type: "virtio" # Host-Only Network for kolla_internal enp0s8
+    config.vm.network "private_network", ip: "192.168.57.200", nic_type: "virtio" # Host-Only Network for kolla_external enp0s9
+    config.vm.network "public_network" # Bridged Network for neutron_external enp0s10
 
     config.vm.provider "virtualbox" do |vb|
       vb.name = "openstack-aio"
       vb.cpus = 4
-      vb.memory = 16000
+      vb.memory = 16384 # Recommended: 20GB or more
       vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"] # Enable Nested Virtualization
-      vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"] # Enable Promiscuous Mode for neutron_external enp0s9
-      
+      vb.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"] # Enable Promiscuous Mode for neutron_external enp0s9
+
       # Cinder Disk (sdc)
       cinder_disk_path = "disks/cinder.vmdk"
       unless File.exist?(cinder_disk_path)
@@ -48,4 +49,4 @@ Vagrant.configure("2") do |config|
     systemctl reload ssh
 
   SHELL
-end 
+end
