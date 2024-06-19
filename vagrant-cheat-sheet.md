@@ -38,6 +38,8 @@ end
 - `vagrant reload`: VM 재시작, `Vagrantfile` 다시 읽음
 - `vagrant reload --provision`: VM 재시작, `Vagrantfile` 다시 읽고 프로비저닝 실행
 
+
+
 ## VM 중지
 
 - `vagrant halt`: VM 중지
