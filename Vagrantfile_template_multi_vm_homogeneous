@@ -1,0 +1,37 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+vm_count = 2
+vm_name_prefix = "vm"
+vm_image = "ubuntu/jammy64"
+vm_cpus = 2
+vm_memory = 2048
+vm_subnet = "192.168.56."
+vm_script = <<-SCRIPT
+  # Change the repository to Kakao
+  sed -i 's/archive.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
+  sed -i 's/security.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
+  # Password Authentication for SSH
+  sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+  sed -i 's/KbdInteractiveAuthenticationno/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config
+  systemctl reload ssh
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  (1..vm_count).each do |i|
+    config.vm.define "#{vm_name_prefix}#{i}" do |config|
+      config.vm.box = vm_image
+      config.vm.provider "virtualbox" do |vb|
+        vb.name = "#{vm_name_prefix}#{i}"
+        vb.cpus = vm_cpus
+        vb.memory = vm_memory
+      end
+      config.vm.hostname = "#{vm_name_prefix}#{i}"
+      config.vm.network "private_network", ip: "#{vm_subnet}#{100 + i}", nic_type: "virtio"
+    end
+  end
+
+  config.vm.provision "shell", inline: vm_script
+  # config.vm.provision "shell", path: "scripts/ubuntu-allow-ssh-pwd-auth.sh"
+  # config.vm.provision "shell", path: "scripts/ubuntu-change-apt-repo.sh"
+end

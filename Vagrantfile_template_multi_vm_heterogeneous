@@ -1,0 +1,39 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+vm_image = "ubuntu/jammy64"
+vm_subnet = "192.168.56."
+vm_script = <<-SCRIPT
+  # Change the repository to Kakao
+  sed -i 's/archive.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
+  sed -i 's/security.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
+  # Password Authentication for SSH
+  sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+  sed -i 's/KbdInteractiveAuthenticationno/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config
+  systemctl reload ssh
+SCRIPT
+
+vms = [
+  {name: "vm-server", image: vm_image, cpus: 2, memory: 4096, ip: "#{vm_subnet}101"},
+  {name: "vm-client", image: vm_image, cpus: 1, memory: 2048, ip: "#{vm_subnet}102"},
+]
+
+Vagrant.configure("2") do |config|
+  vms.each do |vm|
+    config.vm.define vm[:name] do |machine|
+      config.vm.box = vm[:image]
+      config.vm.provider "virtualbox" do |vb|
+        vb.linked_clone = false
+        vb.name = vm[:name]
+        vb.cpus = vm[:cpus]
+        vb.memory = vm[:memory]
+      end
+      config.vm.hostname = vm[:name]
+      config.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"  
+    end
+  end
+
+  config.vm.provision "shell", inline: vm_script
+  # config.vm.provision "shell", path: "scripts/ubuntu-allow-ssh-pwd-auth.sh"
+  # config.vm.provision "shell", path: "scripts/ubuntu-change-apt-repo.sh"
+end

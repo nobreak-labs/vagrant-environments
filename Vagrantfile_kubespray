@@ -1,0 +1,77 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+vm_image = "ubuntu/jammy64"
+vm_name_prefix = "kube"
+vm_subnet = "192.168.56."
+
+number_of_control_planes = 1
+control_plane_cpus = 2
+control_plane_memory = 3072
+control_plane_extra_disk_enabled = false
+control_plane_extra_disk_size = 10240 # MB
+
+number_of_worker_nodes = 3
+worker_node_cpus = 2
+worker_node_memory = 2560
+worker_node_extra_disk_enabled = false
+worker_node_extra_disk_size = 10240 # MB
+
+vm_script = <<-SCRIPT
+  # Change the repository to Kakao
+  sed -i 's/archive.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
+  sed -i 's/security.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
+  # Password Authentication for SSH
+  sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+  sed -i 's/KbdInteractiveAuthenticationno/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config
+  systemctl reload ssh
+SCRIPT
+
+VMS = (1..number_of_control_planes).map do |i|
+  {
+    name: "#{vm_name_prefix}-control#{i}",
+    image: vm_image,
+    cpus: control_plane_cpus,
+    memory: control_plane_memory,
+    extra_disk_enabled: control_plane_extra_disk_enabled,
+    extra_disk_size: control_plane_extra_disk_size,
+    ip: "#{vm_subnet}1#{i}"
+  }
+end
+
+VMS += (1..number_of_worker_nodes).map do |i|
+  {
+    name: "#{vm_name_prefix}-node#{i}",
+    image: vm_image,
+    cpus: worker_node_cpus,
+    memory: worker_node_memory,
+    extra_disk_enabled: worker_node_extra_disk_enabled,
+    extra_disk_size: worker_node_extra_disk_size,
+    ip: "#{vm_subnet}2#{i}"
+  }
+end
+
+Vagrant.configure("2") do |config|
+  VMS.each do |vm|
+    config.vm.define vm[:name] do |machine|  
+      config.vm.hostname = vm[:name]
+      config.vm.box = vm[:image]
+      config.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"
+      config.vm.provider "virtualbox" do |vb|
+        vb.linked_clone = false
+        vb.name = vm[:name]
+        vb.cpus = vm[:cpus]
+        vb.memory = vm[:memory]
+        if vm[:extra_disk_enabled] == true
+          disk_path = "disks/#{vm[:name]}.vmdk"
+          unless File.exist?(disk_path)
+            vb.customize ['createmedium', 'disk', '--format', 'VMDK', '--filename', disk_path, '--size', vm[:extra_disk_size]]
+          end
+          vb.customize ['storageattach', :id, '--storagectl', 'SCSI', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', disk_path]
+        end
+      end
+    end
+  end
+
+  config.vm.provision "shell", inline: vm_script
+end
