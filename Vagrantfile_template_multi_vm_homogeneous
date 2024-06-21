@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 vm_count = 2
-vm_name_prefix = "vm"
+vm_name_prefix = "node"
 vm_image = "ubuntu/jammy64"
 vm_cpus = 2
 vm_memory = 2048
@@ -19,15 +19,15 @@ SCRIPT
 
 Vagrant.configure("2") do |config|
   (1..vm_count).each do |i|
-    config.vm.define "#{vm_name_prefix}#{i}" do |config|
-      config.vm.box = vm_image
-      config.vm.provider "virtualbox" do |vb|
+    config.vm.define "#{vm_name_prefix}#{i}" do |node|
+      node.vm.box = vm_image
+      node.vm.provider "virtualbox" do |vb|
         vb.name = "#{vm_name_prefix}#{i}"
         vb.cpus = vm_cpus
         vb.memory = vm_memory
       end
-      config.vm.hostname = "#{vm_name_prefix}#{i}"
-      config.vm.network "private_network", ip: "#{vm_subnet}#{100 + i}", nic_type: "virtio"
+      node.vm.hostname = "#{vm_name_prefix}#{i}"
+      node.vm.network "private_network", ip: "#{vm_subnet}#{100 + i}", nic_type: "virtio"
     end
   end
 

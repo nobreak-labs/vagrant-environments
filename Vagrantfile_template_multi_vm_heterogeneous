@@ -14,22 +14,22 @@ vm_script = <<-SCRIPT
 SCRIPT
 
 vms = [
-  {name: "vm-server", image: vm_image, cpus: 2, memory: 4096, ip: "#{vm_subnet}101"},
-  {name: "vm-client", image: vm_image, cpus: 1, memory: 2048, ip: "#{vm_subnet}102"},
+  {name: "node-server", image: vm_image, cpus: 2, memory: 4096, ip: "#{vm_subnet}101"},
+  {name: "node-client", image: vm_image, cpus: 1, memory: 2048, ip: "#{vm_subnet}102"},
 ]
 
 Vagrant.configure("2") do |config|
   vms.each do |vm|
-    config.vm.define vm[:name] do |machine|
-      config.vm.box = vm[:image]
-      config.vm.provider "virtualbox" do |vb|
+    config.vm.define vm[:name] do |node|
+      node.vm.box = vm[:image]
+      node.vm.provider "virtualbox" do |vb|
         vb.linked_clone = false
         vb.name = vm[:name]
         vb.cpus = vm[:cpus]
         vb.memory = vm[:memory]
       end
-      config.vm.hostname = vm[:name]
-      config.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"  
+      node.vm.hostname = vm[:name]
+      node.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"  
     end
   end
 

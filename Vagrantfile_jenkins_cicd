@@ -23,16 +23,16 @@ vms = [
 
 Vagrant.configure("2") do |config|
   vms.each do |vm|
-    config.vm.define vm[:name] do |machine|
-      config.vm.box = vm[:image]
-      config.vm.provider "virtualbox" do |vb|
+    config.vm.define vm[:name] do |node|
+      node.vm.box = vm[:image]
+      node.vm.provider "virtualbox" do |vb|
         vb.linked_clone = false
         vb.name = vm[:name]
         vb.cpus = vm[:cpus]
         vb.memory = vm[:memory]
       end
-      config.vm.hostname = vm[:name]
-      config.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"  
+      node.vm.hostname = vm[:name]
+      node.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"  
     end
   end
 

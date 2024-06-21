@@ -12,16 +12,15 @@ vm_script = <<-SCRIPT
 SCRIPT
 
 Vagrant.configure("2") do |config|
-
-  config.vm.define "vm1" do |config|
-    config.vm.box = "ubuntu/jammy64"
-    config.vm.provider "virtualbox" do |vb|
-      vb.name = "vm1"
+  config.vm.define "node1" do |node|
+    node.vm.box = "ubuntu/jammy64"
+    node.vm.provider "virtualbox" do |vb|
+      vb.name = "node1"
       vb.cpus = 2
       vb.memory = 2048
     end
-    config.vm.hostname = "vm1"
-    config.vm.network "private_network", ip: "192.168.56.101", nic_type: "virtio"
+    node.vm.hostname = "node1"
+    node.vm.network "private_network", ip: "192.168.56.101", nic_type: "virtio"
   end
 
   config.vm.provision "shell", inline: vm_script
