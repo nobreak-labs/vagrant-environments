@@ -21,9 +21,8 @@ Vagrant.configure("2") do |config|
     end
     node.vm.hostname = "node1"
     node.vm.network "private_network", ip: "192.168.56.101", nic_type: "virtio"
+    node.vm.provision "shell", inline: vm_script
+    # node.vm.provision "shell", path: "scripts/ubuntu-allow-ssh-pwd-auth.sh"
+    # node.vm.provision "shell", path: "scripts/ubuntu-change-apt-repo.sh"
   end
-
-  config.vm.provision "shell", inline: vm_script
-  # config.vm.provision "shell", path: "scripts/ubuntu-allow-ssh-pwd-auth.sh"
-  # config.vm.provision "shell", path: "scripts/ubuntu-change-apt-repo.sh"
 end
