@@ -16,9 +16,10 @@ SCRIPT
 vms = [
   {name: "jenkins", image: vm_image, cpus: 2, memory: 2048, ip: "#{vm_subnet}101"},
   {name: "tomcat", image: vm_image, cpus: 2, memory: 2048, ip: "#{vm_subnet}102"},
-  {name: "docker", image: vm_image, cpus: 2, memory: 2048, ip: "#{vm_subnet}103"},
-  {name: "ansible", image: vm_image, cpus: 2, memory: 2048, ip: "#{vm_subnet}104"},
-  {name: "kubernetes", image: vm_image, cpus: 2, memory: 4000, ip: "#{vm_subnet}105"}
+  {name: "jenkins-node", image: vm_image, cpus: 2, memory: 2048, ip: "#{vm_subnet}103"},
+  {name: "docker", image: vm_image, cpus: 2, memory: 2048, ip: "#{vm_subnet}104"},
+  {name: "ansible", image: vm_image, cpus: 2, memory: 2048, ip: "#{vm_subnet}105"},
+  {name: "kubernetes", image: vm_image, cpus: 2, memory: 4000, ip: "#{vm_subnet}106"}
 ]
 
 Vagrant.configure("2") do |config|
