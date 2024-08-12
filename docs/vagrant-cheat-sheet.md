@@ -6,6 +6,10 @@
 2. 생성한 디렉터리에 `Vagrantfile` 파일 생성
 3. 해당 디렉터리에서 `vagrant` 명령으로 VM 관리
 
+> ⚠️ 주의
+> 
+> Windows 시스템에서 Vagrantfile을 홈 디렉토리에 배치 한 경우 적절하게 부팅되지 않거나 SSH 관련 오류가 발생할 수 있음, 가능하면 `c:\vagrant` 디렉토리에 작업별 디렡로리를 사용하는 것을 권장함
+
 ## 초기화
 
 - `vagrant init`: 현재 디렉터리에 새로운 `Vagrantfile` 파일 생성, 베이스 이미지가 지정되지 않아 `vagrant up` 할 수 없음
