@@ -69,5 +69,5 @@ choco install virtualbox
 macOS
 
 ```
-brew install virtualbox virtualbox-extension-pack
+brew install virtualbox
 ```
