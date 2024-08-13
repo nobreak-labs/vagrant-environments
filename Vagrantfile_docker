@@ -1,0 +1,42 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+vm_script = <<-SCRIPT
+  # Change the repository to Kakao
+  sed -i 's/archive.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
+  sed -i 's/security.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
+  # Password Authentication for SSH
+  sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+  sed -i 's/KbdInteractiveAuthentication no/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config
+  systemctl reload ssh
+  # Install Docker
+  apt-get update
+  apt-get install -y ca-certificates curl
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  chmod a+r /etc/apt/keyrings/docker.asc
+  echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  apt-get update
+  apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  usermod -aG docker vagrant
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.vm.define "docker" do |node|
+    node.vm.box = "ubuntu/jammy64"
+    node.vm.provider "virtualbox" do |vb|
+      vb.name = "docker"
+      vb.cpus = 2
+      vb.memory = 4096
+    end
+    node.vm.hostname = "docker"
+    node.vm.network "private_network", ip: "192.168.56.111", nic_type: "virtio"
+    node.vm.provision "shell", inline: vm_script
+    # node.vm.provision "shell", path: "scripts/ubuntu-allow-ssh-pwd-auth.sh"
+    # node.vm.provision "shell", path: "scripts/ubuntu-change-apt-repo.sh"
+    # node.vm.provision "shell", path: "scripts/ubuntu-install-docker.sh"
+  end
+end
