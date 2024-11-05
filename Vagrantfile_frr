@@ -39,7 +39,6 @@ frr version 10.1.1
 frr defaults traditional
 hostname frr1
 log syslog informational
-no ipv6 forwarding
 service integrated-vtysh-config
 !
 router rip
