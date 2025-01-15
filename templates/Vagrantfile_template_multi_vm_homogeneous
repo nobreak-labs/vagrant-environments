@@ -3,7 +3,7 @@
 
 vm_count = 2
 vm_name_prefix = "node"
-vm_image = "ubuntu/jammy64"
+vm_image = "nobreak-labs/ubuntu-jammy"
 vm_cpus = 2
 vm_memory = 2048
 vm_subnet = "192.168.56."

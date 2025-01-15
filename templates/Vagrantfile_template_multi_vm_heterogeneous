@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-vm_image = "ubuntu/jammy64"
+vm_image = "nobreak-labs/ubuntu-jammy"
 vm_subnet = "192.168.56."
 vm_script = <<-SCRIPT
   # Change the repository to Kakao

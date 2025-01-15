@@ -13,7 +13,7 @@ SCRIPT
 
 Vagrant.configure("2") do |config|
   config.vm.define "node1" do |node|
-    node.vm.box = "ubuntu/jammy64"
+    node.vm.box = "nobreak-labs/ubuntu-jammy"
     node.vm.provider "virtualbox" do |vb|
       vb.name = "node1"
       vb.cpus = 2
