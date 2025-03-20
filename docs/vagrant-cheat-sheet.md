@@ -16,15 +16,15 @@
 - `vagrant init <box_image>`: 특정 박스 이미지와 함께 `Vagrantfile` 파일 생성
   - [Vagrant Cloud](https://app.vagrantup.com/boxes/search) 이미지 검색
   - 예:
-    - `vagrant init nobreak-labs/ubuntu-jammy`
-    - `vagrant init nobreak-labs/rocky9`
+    - `vagrant init nobreak-labs/ubuntu-noble`
+    - `vagrant init nobreak-labs/rocky-9`
 
 ```ruby
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "nobreak-labs/ubuntu-jammy"
+  config.vm.box = "nobreak-labs/ubuntu-noble"
 end
 ```
 

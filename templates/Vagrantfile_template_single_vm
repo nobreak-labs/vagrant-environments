@@ -1,28 +1,43 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-vm_script = <<-SCRIPT
-  # Change the repository to Kakao
-  sed -i 's/archive.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
-  sed -i 's/security.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
-  # Password Authentication for SSH
-  sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-  sed -i 's/KbdInteractiveAuthentication no/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config
-  systemctl reload ssh
+# VM 설정
+VM_IMAGE = "nobreak-labs/ubuntu-noble"
+VM_CONFIG = {
+  name: "vm",
+  image: VM_IMAGE,
+  cpus: 2,
+  memory: 2048,
+  ip: "192.168.56.101"
+}
+
+# 프로비저닝 스크립트
+CHANGE_APT_REPO = <<-SCRIPT
+  ARCH=$(uname -m)
+  if [ "$ARCH" = "x86_64" ]; then
+    sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources
+  elif [ "$ARCH" = "aarch64" ]; then
+    sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu-ports/|g' /etc/apt/sources.list.d/ubuntu.sources
+  fi
 SCRIPT
 
+# VM 템플릿
 Vagrant.configure("2") do |config|
-  config.vm.define "node1" do |node|
-    node.vm.box = "nobreak-labs/ubuntu-jammy"
+  config.vm.define VM_CONFIG[:name] do |node|
+    node.vm.box = VM_CONFIG[:image]
     node.vm.provider "virtualbox" do |vb|
-      vb.name = "node1"
-      vb.cpus = 2
-      vb.memory = 2048
+      vb.name = VM_CONFIG[:name]
+      vb.cpus = VM_CONFIG[:cpus]
+      vb.memory = VM_CONFIG[:memory]
     end
-    node.vm.hostname = "node1"
-    node.vm.network "private_network", ip: "192.168.56.101", nic_type: "virtio"
-    node.vm.provision "shell", inline: vm_script
-    # node.vm.provision "shell", path: "scripts/ubuntu-allow-ssh-pwd-auth.sh"
-    # node.vm.provision "shell", path: "scripts/ubuntu-change-apt-repo.sh"
+    node.vm.hostname = VM_CONFIG[:name]
+    node.vm.network "private_network", ip: VM_CONFIG[:ip], nic_type: "virtio"
+    
+    if node.vm.box.include?("ubuntu")
+      node.vm.provision "shell", inline: CHANGE_APT_REPO
+      # node.vm.provision "shell", path: "scripts/ubuntu/example.sh"
+    elsif node.vm.box.include?("rocky")
+      # node.vm.provision "shell", path: "scripts/rocky/example.sh"
+    end
   end
 end

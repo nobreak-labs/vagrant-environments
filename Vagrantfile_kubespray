@@ -1,53 +1,48 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-vm_image = "nobreak-labs/ubuntu-jammy"
-vm_name_prefix = "kube"
-vm_subnet = "192.168.56."
+# VM 설정
+VM_IMAGE = "nobreak-labs/ubuntu-noble"
+VM_NAME_PREFIX = "kube"
+VM_SUBNET = "192.168.56."
+VM_CONFIG_CONTROL_PLANE = {
+  count: 1, cpus: 2, memory: 3072, extra_disk_enabled: false, extra_disk_size: 10 # GB
+}
+VM_CONFIG_WORKER_NODE = {
+  count: 3, cpus: 2, memory: 2560, extra_disk_enabled: false, extra_disk_size: 10 # GB
+}
 
-number_of_control_planes = 1
-control_plane_cpus = 2
-control_plane_memory = 3072
-control_plane_extra_disk_enabled = false
-control_plane_extra_disk_size = 10240 # MB
-
-number_of_worker_nodes = 3
-worker_node_cpus = 2
-worker_node_memory = 2560
-worker_node_extra_disk_enabled = false
-worker_node_extra_disk_size = 10240 # MB
-
-vm_script = <<-SCRIPT
-  # Change the repository to Kakao
-  sed -i 's/archive.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
-  sed -i 's/security.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
-  # Password Authentication for SSH
-  sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-  sed -i 's/KbdInteractiveAuthentication no/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config
-  systemctl reload ssh
+# 프로비저닝 스크립트
+CHANGE_APT_REPO = <<-SCRIPT
+  ARCH=$(uname -m)
+  if [ "$ARCH" = "x86_64" ]; then
+    sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources
+  elif [ "$ARCH" = "aarch64" ]; then
+    sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu-ports/|g' /etc/apt/sources.list.d/ubuntu.sources
+  fi
 SCRIPT
 
-VMS = (1..number_of_control_planes).map do |i|
+VMS = (1..VM_CONFIG_CONTROL_PLANE[:count]).map do |i|
   {
-    name: "#{vm_name_prefix}-control#{i}",
-    image: vm_image,
-    cpus: control_plane_cpus,
-    memory: control_plane_memory,
-    extra_disk_enabled: control_plane_extra_disk_enabled,
-    extra_disk_size: control_plane_extra_disk_size,
-    ip: "#{vm_subnet}1#{i}"
+    name: "#{VM_NAME_PREFIX}-control#{i}",
+    image: VM_IMAGE,
+    cpus: VM_CONFIG_CONTROL_PLANE[:cpus],
+    memory: VM_CONFIG_CONTROL_PLANE[:memory],
+    extra_disk_enabled: VM_CONFIG_CONTROL_PLANE[:extra_disk_enabled],
+    extra_disk_size: VM_CONFIG_CONTROL_PLANE[:extra_disk_size] * 1024,
+    ip: "#{VM_SUBNET}1#{i}"
   }
 end
 
-VMS += (1..number_of_worker_nodes).map do |i|
+VMS += (1..VM_CONFIG_WORKER_NODE[:count]).map do |i|
   {
-    name: "#{vm_name_prefix}-node#{i}",
-    image: vm_image,
-    cpus: worker_node_cpus,
-    memory: worker_node_memory,
-    extra_disk_enabled: worker_node_extra_disk_enabled,
-    extra_disk_size: worker_node_extra_disk_size,
-    ip: "#{vm_subnet}2#{i}"
+    name: "#{VM_NAME_PREFIX}-node#{i}",
+    image: VM_IMAGE,
+    cpus: VM_CONFIG_WORKER_NODE[:cpus],
+    memory: VM_CONFIG_WORKER_NODE[:memory],
+    extra_disk_enabled: VM_CONFIG_WORKER_NODE[:extra_disk_enabled],
+    extra_disk_size: VM_CONFIG_WORKER_NODE[:extra_disk_size] * 1024,
+    ip: "#{VM_SUBNET}2#{i}"
   }
 end
 
@@ -62,16 +57,15 @@ Vagrant.configure("2") do |config|
         vb.name = vm[:name]
         vb.cpus = vm[:cpus]
         vb.memory = vm[:memory]
-        vb.customize ['modifyvm', :id, '--nictype1', 'virtio']
         if vm[:extra_disk_enabled] == true
           disk_path = "disks/#{vm[:name]}.vmdk"
           unless File.exist?(disk_path)
             vb.customize ['createmedium', 'disk', '--format', 'VMDK', '--filename', disk_path, '--size', vm[:extra_disk_size]]
           end
-          vb.customize ['storageattach', :id, '--storagectl', 'SCSI', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', disk_path]
+          vb.customize ['storageattach', :id, '--storagectl', 'VirtIO Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', disk_path]
         end
       end
-      node.vm.provision "shell", inline: vm_script
+      node.vm.provision "shell", inline: CHANGE_APT_REPO
     end
   end
 end

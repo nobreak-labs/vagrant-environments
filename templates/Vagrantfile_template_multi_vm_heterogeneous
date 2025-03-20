@@ -1,25 +1,27 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-vm_image = "nobreak-labs/ubuntu-jammy"
-vm_subnet = "192.168.56."
-vm_script = <<-SCRIPT
-  # Change the repository to Kakao
-  sed -i 's/archive.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
-  sed -i 's/security.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
-  # Password Authentication for SSH
-  sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-  sed -i 's/KbdInteractiveAuthentication no/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config
-  systemctl reload ssh
-SCRIPT
-
-vms = [
-  {name: "node-server", image: vm_image, cpus: 2, memory: 4096, ip: "#{vm_subnet}101"},
-  {name: "node-client", image: vm_image, cpus: 1, memory: 2048, ip: "#{vm_subnet}102"},
+# VM 설정
+VM_IMAGE = "nobreak-labs/ubuntu-noble"
+VM_SUBNET = "192.168.56."
+VM_CONFIG = [
+  { name: "vm1", image: VM_IMAGE, cpus: 2, memory: 4096, ip: "#{VM_SUBNET}101" },
+  { name: "vm2", image: VM_IMAGE, cpus: 1, memory: 2048, ip: "#{VM_SUBNET}102" },
 ]
 
+# 프로비저닝 스크립트
+CHANGE_APT_REPO = <<-SCRIPT
+  ARCH=$(uname -m)
+  if [ "$ARCH" = "x86_64" ]; then
+    sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources
+  elif [ "$ARCH" = "aarch64" ]; then
+    sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu-ports/|g' /etc/apt/sources.list.d/ubuntu.sources
+  fi
+SCRIPT
+
+# VM 템플릿
 Vagrant.configure("2") do |config|
-  vms.each do |vm|
+  VM_CONFIG.each do |vm|
     config.vm.define vm[:name] do |node|
       node.vm.box = vm[:image]
       node.vm.provider "virtualbox" do |vb|
@@ -29,10 +31,14 @@ Vagrant.configure("2") do |config|
         vb.memory = vm[:memory]
       end
       node.vm.hostname = vm[:name]
-      node.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"  
-      node.vm.provision "shell", inline: vm_script
-      # node.vm.provision "shell", path: "scripts/ubuntu-allow-ssh-pwd-auth.sh"
-      # node.vm.provision "shell", path: "scripts/ubuntu-change-apt-repo.sh"
+      node.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"
+      
+      if node.vm.box.include?("ubuntu")
+        node.vm.provision "shell", inline: CHANGE_APT_REPO
+        # node.vm.provision "shell", path: "scripts/ubuntu/example.sh"
+      elsif node.vm.box.include?("rocky")
+        # node.vm.provision "shell", path: "scripts/rocky/example.sh"
+      end
     end
   end
 end

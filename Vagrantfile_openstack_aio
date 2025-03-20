@@ -4,7 +4,7 @@
 Vagrant.configure("2") do |config|
 
   config.vm.define "openstack-aio" do |node|
-    node.vm.box = "nobreak-labs/ubuntu-jammy"
+    node.vm.box = "nobreak-labs/ubuntu-noble"
     node.vm.hostname = "openstack-aio"
     node.vm.network "private_network", ip: "192.168.56.200", nic_type: "virtio" # Host-Only Network for kolla_internal enp0s8
     node.vm.network "private_network", ip: "192.168.57.200", nic_type: "virtio" # Host-Only Network for kolla_external enp0s9
@@ -22,7 +22,7 @@ Vagrant.configure("2") do |config|
       unless File.exist?(cinder_disk_path)
         vb.customize ['createmedium', 'disk', '--format', 'VMDK', '--filename', cinder_disk_path, '--size', 20480]
       end
-      vb.customize ['storageattach', :id, '--storagectl', 'SCSI', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', cinder_disk_path]
+      vb.customize ['storageattach', :id, '--storagectl', 'VirtIO Controller', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', cinder_disk_path]
 
       # Swift Disk (sde, sdf, sdg)
       3.times do |i|
@@ -30,18 +30,17 @@ Vagrant.configure("2") do |config|
         unless File.exist?(swift_disk_path)
           vb.customize ['createmedium', 'disk', '--format', 'VMDK', '--filename', swift_disk_path, '--size', 10240]
         end
-        vb.customize ['storageattach', :id, '--storagectl', 'SCSI', '--port', 3+i, '--device', 0, '--type', 'hdd', '--medium', swift_disk_path]
+        vb.customize ['storageattach', :id, '--storagectl', 'VirtIO Controller', '--port', 3+i, '--device', 0, '--type', 'hdd', '--medium', swift_disk_path]
       end
     end
 
     node.vm.provision "shell", inline: <<-SHELL
-      # Change the repository to Kakao
-      sed -i 's/archive.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
-      sed -i 's/security.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
-      # Password Authentication for SSH
-      sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-      sed -i 's/KbdInteractiveAuthentication no/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config
-      systemctl reload ssh
+      ARCH=$(uname -m)
+      if [ "$ARCH" = "x86_64" ]; then
+        sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources
+      elif [ "$ARCH" = "aarch64" ]; then
+        sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu-ports/|g' /etc/apt/sources.list.d/ubuntu.sources
+      fi
       SHELL
   end
 end
