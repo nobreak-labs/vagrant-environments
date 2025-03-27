@@ -57,12 +57,11 @@ VMS += (1..VM_CONFIG_WORKER_NODE[:count]).map do |i|
   }
 end
 
+# VM 템플릿
 Vagrant.configure("2") do |config|
   VMS.each do |vm|
     config.vm.define vm[:name] do |node|  
-      node.vm.hostname = vm[:name]
       node.vm.box = vm[:image]
-      node.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"
       node.vm.provider "virtualbox" do |vb|
         vb.linked_clone = false
         vb.name = vm[:name]
@@ -76,6 +75,10 @@ Vagrant.configure("2") do |config|
           vb.customize ['storageattach', :id, '--storagectl', 'VirtIO Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', disk_path]
         end
       end
+      node.vm.hostname = vm[:name]
+      node.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"\
+      node.vm.synced_folder ".", "/vagrant", disabled: true
+
       node.vm.provision "shell", inline: CHANGE_APT_REPO
     end
   end

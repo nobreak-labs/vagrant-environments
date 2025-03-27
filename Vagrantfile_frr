@@ -87,6 +87,8 @@ Vagrant.configure("2") do |config|
     node.vm.hostname = VM_CONFIG[:name]
     node.vm.network "private_network", ip: VM_CONFIG[:ip1], nic_type: "virtio"
     node.vm.network "private_network", ip: VM_CONFIG[:ip2], nic_type: "virtio"
+    node.vm.synced_folder ".", "/vagrant", disabled: true
+    
     if node.vm.box.include?("ubuntu")
       node.vm.provision "shell", inline: CHANGE_APT_REPO
       node.vm.provision "shell", inline: FRR_INSTALL
