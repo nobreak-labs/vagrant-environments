@@ -11,4 +11,3 @@
 - Rocky Linux 9
   - 이름: nobreak-labs/rocky-9
   - URL: https://portal.cloud.hashicorp.com/vagrant/discover/nobreak-labs/rocky-9
-
