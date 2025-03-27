@@ -14,8 +14,9 @@
 
 - `vagrant init`: 현재 디렉터리에 새로운 `Vagrantfile` 파일 생성, 베이스 이미지가 지정되지 않아 `vagrant up` 할 수 없음
 - `vagrant init <box_image>`: 특정 박스 이미지와 함께 `Vagrantfile` 파일 생성
-  - [Vagrant Cloud](https://app.vagrantup.com/boxes/search) 이미지 검색
+  - [Discover Vagrant Boxes](https://portal.cloud.hashicorp.com/vagrant/discover) 이미지 검색
   - 예:
+    - `vagrant init nobreak-labs/ubuntu-jammy`
     - `vagrant init nobreak-labs/ubuntu-noble`
     - `vagrant init nobreak-labs/rocky-9`
 
