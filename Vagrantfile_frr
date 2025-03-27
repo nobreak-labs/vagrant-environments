@@ -1,0 +1,97 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# VM 설정
+VM_IMAGE = "nobreak-labs/ubuntu-noble"
+VM_CONFIG = {
+  name: "frr",
+  image: VM_IMAGE,
+  cpus: 2,
+  memory: 2048,
+  ip1: "192.168.56.254",
+  ip2: "192.168.57.254"
+}
+
+# 프로비저닝 스크립트
+CHANGE_APT_REPO = <<-SCRIPT
+  ARCH=$(uname -m)
+  RELEASE=$(lsb_release -cs)
+  if [ "$RELEASE" = "jammy" ]; then
+    # Ubuntu 22.04
+    if [ "$ARCH" = "x86_64" ]; then
+      sed -i 's/archive.ubuntu.com\\|kr.archive.ubuntu.com\\|security.ubuntu.com/ftp.kaist.ac.kr/g' /etc/apt/sources.list
+    elif [ "$ARCH" = "aarch64" ]; then
+      sed -i 's/ports.ubuntu.com/ftp.kaist.ac.kr/g' /etc/apt/sources.list
+    fi
+  elif [ "$RELEASE" = "noble" ]; then
+    # Ubuntu 24.04
+    if [ "$ARCH" = "x86_64" ]; then
+      sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources
+    elif [ "$ARCH" = "aarch64" ]; then
+      sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu-ports/|g' /etc/apt/sources.list.d/ubuntu.sources
+    fi
+  fi
+SCRIPT
+
+FRR_INSTALL = <<-SCRIPT
+  # FRR Installation
+  curl -s https://deb.frrouting.org/frr/keys.gpg | tee /usr/share/keyrings/frrouting.gpg > /dev/null
+  FRRVER="frr-stable"
+  echo deb '[signed-by=/usr/share/keyrings/frrouting.gpg]' https://deb.frrouting.org/frr $(lsb_release -s -c) $FRRVER | tee -a /etc/apt/sources.list.d/frr.list
+  apt-get update && apt-get install -y frr frr-pythontools
+SCRIPT
+
+FRR_PRECONFIG = <<-SCRIPT
+  # Delete the default route
+  ip route del 0.0.0.0/0 via 10.0.2.2
+
+  # Enable IPv4/IPv6 Forwarding
+  sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
+  sed -i 's/#net.ipv6.conf.all.forwarding=1/net.ipv6.conf.all.forwarding=1/g' /etc/sysctl.conf
+  sysctl -p
+SCRIPT
+
+FRR_CONFIG = <<-SCRIPT
+  # sed -i 's/bgpd=no/bgpd=yes/g' /etc/frr/daemons
+  # sed -i 's/ospfd=no/ospfd=yes/g' /etc/frr/daemons
+  sed -i 's/ripd=no/ripd=yes/g' /etc/frr/daemons
+  # sed -i 's/isisd=no/isisd=yes/g' /etc/frr/daemons
+  # sed -i 's/eigrpd=no/eigrpd=yes/g' /etc/frr/daemons
+  # sed -i 's/vrrpd=no/vrrpd=yes/g' /etc/frr/daemons
+
+  cat << 'EOF' | tee /etc/frr/frr.conf
+frr version 10.1.1
+frr defaults traditional
+hostname frr1
+log syslog informational
+no ipv6 forwarding
+service integrated-vtysh-config
+!
+router rip
+ network 192.168.56.0/24
+ network 192.168.57.0/24
+!
+EOF
+  systemctl restart frr
+SCRIPT
+
+# VM 템플릿
+Vagrant.configure("2") do |config|
+  config.vm.define VM_CONFIG[:name] do |node|
+    node.vm.box = VM_CONFIG[:image]
+    node.vm.provider "virtualbox" do |vb|
+      vb.name = VM_CONFIG[:name]
+      vb.cpus = VM_CONFIG[:cpus]
+      vb.memory = VM_CONFIG[:memory]
+    end
+    node.vm.hostname = VM_CONFIG[:name]
+    node.vm.network "private_network", ip: VM_CONFIG[:ip1], nic_type: "virtio"
+    node.vm.network "private_network", ip: VM_CONFIG[:ip2], nic_type: "virtio"
+    if node.vm.box.include?("ubuntu")
+      node.vm.provision "shell", inline: CHANGE_APT_REPO
+      node.vm.provision "shell", inline: FRR_INSTALL
+      node.vm.provision "shell", inline: FRR_PRECONFIG
+      node.vm.provision "shell", inline: FRR_CONFIG
+    end
+  end
+end
