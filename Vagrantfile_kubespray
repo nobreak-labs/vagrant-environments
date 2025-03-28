@@ -76,7 +76,7 @@ Vagrant.configure("2") do |config|
         end
       end
       node.vm.hostname = vm[:name]
-      node.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"\
+      node.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"
       node.vm.synced_folder ".", "/vagrant", disabled: true
 
       node.vm.provision "shell", inline: CHANGE_APT_REPO
