@@ -5,6 +5,7 @@ VM_IMAGE = "nobreak-labs/ubuntu-jammy" # Ubuntu 22.04 for Tomcat 9
 # VM_IMAGE = "nobreak-labs/ubuntu-noble" # Ubuntu 24.04 for Tomcat 10
 VM_SUBNET = "192.168.56."
 VM_CONFIG = [
+  {name: "tools", image: VM_IMAGE, cpus: 2, memory: 2048, ip: "#{VM_SUBNET}100"},
   {name: "jenkins", image: VM_IMAGE, cpus: 2, memory: 2048, ip: "#{VM_SUBNET}101"},
   {name: "tomcat", image: VM_IMAGE, cpus: 2, memory: 2048, ip: "#{VM_SUBNET}102"},
   {name: "jenkins-node", image: VM_IMAGE, cpus: 2, memory: 2048, ip: "#{VM_SUBNET}103"},
