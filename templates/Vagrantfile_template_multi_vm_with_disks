@@ -1,0 +1,82 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# VM 설정
+VM_IMAGE = "nobreak-labs/ubuntu-noble"
+VM_SUBNET = "192.168.56."
+VM_CONFIG = {
+  count: 2,
+  name_prefix: "vm",
+  image: VM_IMAGE,
+  cpus: 2,
+  memory: 2048,
+  subnet: VM_SUBNET,
+  disks: {
+    enabled: true,
+    count: 2,
+    size: 20480 # 20GB
+  }
+}
+
+# 프로비저닝 스크립트
+CHANGE_APT_REPO = <<-SCRIPT
+  ARCH=$(uname -m)
+  RELEASE=$(lsb_release -cs)
+  if [ "$RELEASE" = "jammy" ]; then
+    # Ubuntu 22.04
+    if [ "$ARCH" = "x86_64" ]; then
+      sed -i 's/archive.ubuntu.com\\|kr.archive.ubuntu.com\\|security.ubuntu.com/ftp.kaist.ac.kr/g' /etc/apt/sources.list
+    elif [ "$ARCH" = "aarch64" ]; then
+      sed -i 's/ports.ubuntu.com/ftp.kaist.ac.kr/g' /etc/apt/sources.list
+    fi
+  elif [ "$RELEASE" = "noble" ]; then
+    # Ubuntu 24.04
+    if [ "$ARCH" = "x86_64" ]; then
+      sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources
+    elif [ "$ARCH" = "aarch64" ]; then
+      sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu-ports/|g' /etc/apt/sources.list.d/ubuntu.sources
+    fi
+  fi
+SCRIPT
+
+# VM 템플릿
+Vagrant.configure("2") do |config|
+  (1..VM_CONFIG[:count]).each do |i|
+    config.vm.define "#{VM_CONFIG[:name_prefix]}#{i}" do |node|
+      node.vm.box = VM_CONFIG[:image]
+      node.vm.provider "virtualbox" do |vb|
+        vb.linked_clone = false
+        vb.name = "#{VM_CONFIG[:name_prefix]}#{i}"
+        vb.cpus = VM_CONFIG[:cpus]
+        vb.memory = VM_CONFIG[:memory]
+
+        # 추가 디스크 설정
+        if VM_CONFIG[:disks][:enabled]
+          disk_dir = "disks/#{VM_CONFIG[:name_prefix]}#{i}"
+          Dir.mkdir("disks") unless File.directory?("disks")
+          Dir.mkdir(disk_dir) unless File.directory?(disk_dir)
+
+          disk_paths = (1..VM_CONFIG[:disks][:count]).map { |j| "#{disk_dir}/disk#{j}.vmdk" }
+          disk_paths.each do |path|
+            unless File.exist?(path)
+              vb.customize ['createmedium', 'disk', '--format', 'vmdk', '--filename', path, '--size', VM_CONFIG[:disks][:size].to_s]
+            end
+          end
+          disk_paths.each_with_index do |path, index|
+            vb.customize ['storageattach', :id, '--storagectl', 'VirtIO Controller', '--port', index + 1, '--device', 0, '--type', 'hdd', '--medium', path]
+          end
+        end
+      end
+      node.vm.hostname = "#{VM_CONFIG[:name_prefix]}#{i}"
+      node.vm.network "private_network", ip: "#{VM_CONFIG[:subnet]}#{100 + i}", nic_type: "virtio"
+      node.vm.synced_folder ".", "/vagrant", disabled: true
+
+      if node.vm.box.include?("ubuntu")
+        node.vm.provision "shell", inline: CHANGE_APT_REPO
+        # node.vm.provision "shell", path: "scripts/ubuntu/example.sh"
+      elsif node.vm.box.include?("rocky")
+        # node.vm.provision "shell", path: "scripts/rocky/example.sh"
+      end
+    end
+  end
+end
