@@ -1,19 +1,13 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# VM 설정
+# Global VM configuration
 VM_IMAGE = "nobreak-labs/ubuntu-noble"
-VM_NAME_PREFIX = "kube"
-VM_SUBNET = "192.168.56."
-VM_CONFIG_CONTROL_PLANE = {
-  count: 1, cpus: 2, memory: 3072, extra_disk_enabled: false, extra_disk_size: 10 # GB
-}
-VM_CONFIG_WORKER_NODE = {
-  count: 3, cpus: 2, memory: 2560, extra_disk_enabled: false, extra_disk_size: 10 # GB
-}
+VM_CPUS = 2
+VM_MEMORY = "2048"
 
-# 프로비저닝 스크립트
-CHANGE_APT_REPO = <<-SCRIPT
+# Provisioning scripts
+UBUNTU_CHANGE_APT_REPO = <<-SCRIPT
   ARCH=$(uname -m)
   RELEASE=$(lsb_release -cs)
   if [ "$RELEASE" = "jammy" ]; then
@@ -33,53 +27,76 @@ CHANGE_APT_REPO = <<-SCRIPT
   fi
 SCRIPT
 
-VMS = (1..VM_CONFIG_CONTROL_PLANE[:count]).map do |i|
-  {
-    name: "#{VM_NAME_PREFIX}-control#{i}",
-    image: VM_IMAGE,
-    cpus: VM_CONFIG_CONTROL_PLANE[:cpus],
-    memory: VM_CONFIG_CONTROL_PLANE[:memory],
-    extra_disk_enabled: VM_CONFIG_CONTROL_PLANE[:extra_disk_enabled],
-    extra_disk_size: VM_CONFIG_CONTROL_PLANE[:extra_disk_size] * 1024,
-    ip: "#{VM_SUBNET}1#{i}"
+# VM Configuration
+VM_CONFIG = {
+  "kube-control1" => {
+    cpus: 2,
+    memory: "3072",
+    networks: ["192.168.56.11"],
+    # disks: ["10GB"],
+    scripts: [UBUNTU_CHANGE_APT_REPO]
+  },
+  "kube-node1" => {
+    cpus: 2,
+    memory: "2560",
+    networks: ["192.168.56.21"],
+    # disks: ["10GB"],
+    scripts: [UBUNTU_CHANGE_APT_REPO]
+  },
+  "kube-node2" => {
+    cpus: 2,
+    memory: "2560",
+    networks: ["192.168.56.22"],
+    # disks: ["10GB"],
+    scripts: [UBUNTU_CHANGE_APT_REPO]
+  },
+  "kube-node3" => {
+    cpus: 2,
+    memory: "2560",
+    networks: ["192.168.56.23"],
+    # disks: ["10GB"],
+    scripts: [UBUNTU_CHANGE_APT_REPO]
   }
-end
+}
 
-VMS += (1..VM_CONFIG_WORKER_NODE[:count]).map do |i|
-  {
-    name: "#{VM_NAME_PREFIX}-node#{i}",
-    image: VM_IMAGE,
-    cpus: VM_CONFIG_WORKER_NODE[:cpus],
-    memory: VM_CONFIG_WORKER_NODE[:memory],
-    extra_disk_enabled: VM_CONFIG_WORKER_NODE[:extra_disk_enabled],
-    extra_disk_size: VM_CONFIG_WORKER_NODE[:extra_disk_size] * 1024,
-    ip: "#{VM_SUBNET}2#{i}"
-  }
-end
-
-# VM 템플릿
 Vagrant.configure("2") do |config|
-  VMS.each do |vm|
-    config.vm.define vm[:name] do |node|  
-      node.vm.box = vm[:image]
+  
+  VM_CONFIG.each do |node_name, node_config|
+    config.vm.define node_name do |node|
+      node.vm.hostname = node_name
+      node.vm.box = node_config[:image] || VM_IMAGE
       node.vm.provider "virtualbox" do |vb|
-        vb.linked_clone = false
-        vb.name = vm[:name]
-        vb.cpus = vm[:cpus]
-        vb.memory = vm[:memory]
-        if vm[:extra_disk_enabled] == true
-          disk_path = "disks/#{vm[:name]}.vmdk"
-          unless File.exist?(disk_path)
-            vb.customize ['createmedium', 'disk', '--format', 'VMDK', '--filename', disk_path, '--size', vm[:extra_disk_size]]
-          end
-          vb.customize ['storageattach', :id, '--storagectl', 'VirtIO Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', disk_path]
+        vb.memory = node_config[:memory] || VM_MEMORY
+        vb.cpus = node_config[:cpus] || VM_CPUS
+        vb.name = node_name
+      end
+      node.vm.synced_folder ".", "/vagrant", disabled: true
+      
+      # Network config
+      if node_config[:networks]
+        node_config[:networks].each do |ip|
+          node.vm.network "private_network", ip: ip, nic_type: "virtio"
         end
       end
-      node.vm.hostname = vm[:name]
-      node.vm.network "private_network", ip: vm[:ip], nic_type: "virtio"
-      node.vm.synced_folder ".", "/vagrant", disabled: true
 
-      node.vm.provision "shell", inline: CHANGE_APT_REPO
+      # Provision scripts
+      if node_config[:scripts]
+        node_config[:scripts].each do |script|
+          if script.include?("\n")
+            node.vm.provision "shell", inline: script
+          else
+            node.vm.provision "shell", path: script
+          end
+        end
+      end
+      
+      # Add disks
+      if node_config[:disks]
+        node_config[:disks].each_with_index do |size, i|
+          disk_name = "disk#{i + 1}"
+          node.vm.disk :disk, size: size, name: disk_name
+        end
+      end
     end
   end
 end

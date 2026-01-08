@@ -2,12 +2,25 @@
 # vi: set ft=ruby :
 
 # Global VM configuration
-# VM_IMAGE = "nobreak-labs/ubuntu-noble" # Ubuntu 24.04 for Tomcat 10
-VM_IMAGE = "nobreak-labs/ubuntu-jammy" # Ubuntu 22.04 for Tomcat 9
+#
+# [Usage Guide]
+# Define your global VM configuration in the VM_IMAGE, VM_CPUS, and VM_MEMORY variables below.
+VM_IMAGE = "nobreak-labs/rocky-9"
 VM_CPUS = 2
 VM_MEMORY = "2048"
 
-# Provisioning scripts
+# Sample scripts
+#
+# [Usage Guide]
+# Define your scripts in the COMMON_SCRIPT and INSTALL_SCRIPT variables below.
+# You can use inline scripts or file paths.
+# Inline scripts are defined using here-document syntax (<<-SCRIPT).
+# File paths are defined using the path to the script file.
+# Example:
+#   COMMON_SCRIPT = <<-SCRIPT
+#     echo "Hello World"
+#   SCRIPT
+#   INSTALL_SCRIPT = "./setup.sh"
 UBUNTU_CHANGE_APT_REPO = <<-SCRIPT
   ARCH=$(uname -m)
   RELEASE=$(lsb_release -cs)
@@ -29,38 +42,54 @@ UBUNTU_CHANGE_APT_REPO = <<-SCRIPT
 SCRIPT
 
 # VM Configuration
+#
+# [Usage Guide]
+# Define your VMs in the VM_CONFIG hash below.
+#
+# Configuration Options:
+# - cpus:     (Optional) Number of CPU cores. Default: VM_CPUS
+# - memory:   (Optional) Memory size in MB. Default: VM_MEMORY
+# - image:    (Optional) Vagrant box image name. Default: VM_IMAGE
+# - networks: (Optional) Array of IP addresses for private networks.
+# - disks:    (Optional) Array of disk sizes (e.g., "10GB"). Disk names are auto-generated (disk1, disk2...).
+# - scripts:  (Optional) Array of script variables (inline) or file paths for provisioning.
+#
+# Example:
+#   "VM_NAME" => {
+#     cpus: 2,
+#     memory: "2048",
+#     image: "nobreak-labs/rocky-9",
+#     networks: ["192.168.56.10"],
+#     disks: ["10GB", "20GB"],
+#     scripts: [COMMON_SCRIPT, "./setup.sh"]
+#   },
 VM_CONFIG = {
-  "git-repo" => {
-    networks: ["192.168.56.100"],
+  # 1. Network only (Default CPU/Memory/Image)
+  "vm1" => { 
+    networks: ["192.168.56.11"]
+  },
+
+  # 2. Custom Resource (CPU, Memory)
+  "vm2" => { 
+    cpus: 1,
+    memory: "1024",
+    networks: ["192.168.57.12", "192.168.58.12"]
+  },
+
+  # 3. Custom Image & Disks
+  "vm3" => { 
+    image: "nobreak-labs/ubuntu-noble",
+    networks: ["192.168.57.13"],
+    disks: ["10GB"],
     scripts: [UBUNTU_CHANGE_APT_REPO]
   },
-  "jenkins" => {
-    networks: ["192.168.56.101"],
-    scripts: [UBUNTU_CHANGE_APT_REPO]
-  },
-  "tomcat" => {
-    networks: ["192.168.56.102"],
-    scripts: [UBUNTU_CHANGE_APT_REPO]
-  },
-  "jenkins-node" => {
-    networks: ["192.168.56.103"],
-    scripts: [UBUNTU_CHANGE_APT_REPO]
-  },
-  "docker" => {
-    cpus: 4,
+
+  # 4. Full Configuration (Image, Disks, Scripts)
+  "vm4" => { 
+    cpus: 2,
     memory: "4096",
-    networks: ["192.168.56.104"],
-    scripts: [UBUNTU_CHANGE_APT_REPO]
-  },
-  "webserver" => {
-    networks: ["192.168.56.105"],
-    scripts: [UBUNTU_CHANGE_APT_REPO]
-  },
-  "kubernetes" => {
-    cpus: 4,
-    memory: "8192",
-    networks: ["192.168.56.106"],
-    scripts: [UBUNTU_CHANGE_APT_REPO]
+    networks: ["192.168.58.14"],
+    disks: ["10GB", "10GB"]
   }
 }
 
@@ -80,7 +109,7 @@ Vagrant.configure("2") do |config|
       # Network config
       if node_config[:networks]
         node_config[:networks].each do |ip|
-          node.vm.network "private_network", ip: ip, nic_type: "virtio"
+          node.vm.network "private_network", ip: ip
         end
       end
 

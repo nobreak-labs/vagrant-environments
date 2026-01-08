@@ -1,17 +1,12 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# VM 설정
+# Global VM configuration
 VM_IMAGE = "nobreak-labs/ubuntu-noble"
-VM_CONFIG = {
-  name: "docker",
-  image: VM_IMAGE,
-  cpus: 2,
-  memory: 4096,
-  ip: "192.168.56.101"
-}
+VM_CPUS = 2
+VM_MEMORY = "4096"
 
-# 프로비저닝 스크립트
+# Provisioning scripts
 CHANGE_APT_REPO = <<-SCRIPT
   ARCH=$(uname -m)
   RELEASE=$(lsb_release -cs)
@@ -50,22 +45,55 @@ INSTALL_DOCKER = <<-SCRIPT
   usermod -aG docker vagrant
 SCRIPT
 
-# VM 템플릿
+# VM Configuration
+VM_CONFIG = {
+  "docker" => {
+    cpus: 2,
+    memory: "4096",
+    image: VM_IMAGE,
+    networks: ["192.168.56.101"],
+    scripts: [CHANGE_APT_REPO, INSTALL_DOCKER]
+  }
+}
+
 Vagrant.configure("2") do |config|
-  config.vm.define VM_CONFIG[:name] do |node|
-    node.vm.box = VM_CONFIG[:image]
-    node.vm.provider "virtualbox" do |vb|
-      vb.name = VM_CONFIG[:name]
-      vb.cpus = VM_CONFIG[:cpus]
-      vb.memory = VM_CONFIG[:memory]
-    end
-    node.vm.hostname = VM_CONFIG[:name]
-    node.vm.network "private_network", ip: VM_CONFIG[:ip], nic_type: "virtio"
-    node.vm.synced_folder ".", "/vagrant", disabled: true
-    
-    if node.vm.box.include?("ubuntu")
-      node.vm.provision "shell", inline: CHANGE_APT_REPO
-      node.vm.provision "shell", inline: INSTALL_DOCKER
+  
+  VM_CONFIG.each do |node_name, node_config|
+    config.vm.define node_name do |node|
+      node.vm.hostname = node_name
+      node.vm.box = node_config[:image] || VM_IMAGE
+      node.vm.provider "virtualbox" do |vb|
+        vb.memory = node_config[:memory] || VM_MEMORY
+        vb.cpus = node_config[:cpus] || VM_CPUS
+        vb.name = node_name
+      end
+      node.vm.synced_folder ".", "/vagrant", disabled: true
+      
+      # Network config
+      if node_config[:networks]
+        node_config[:networks].each do |ip|
+          node.vm.network "private_network", ip: ip
+        end
+      end
+
+      # Provision scripts
+      if node_config[:scripts]
+        node_config[:scripts].each do |script|
+          if script.include?("\n")
+            node.vm.provision "shell", inline: script
+          else
+            node.vm.provision "shell", path: script
+          end
+        end
+      end
+      
+      # Add disks
+      if node_config[:disks]
+        node_config[:disks].each_with_index do |size, i|
+          disk_name = "disk#{i + 1}"
+          node.vm.disk :disk, size: size, name: disk_name
+        end
+      end
     end
   end
 end
