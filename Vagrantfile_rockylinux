@@ -1,0 +1,74 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Global VM configuration
+VM_IMAGE = "nobreak-labs/rocky-9"
+VM_CPUS = 2
+VM_MEMORY = "2048"
+
+# Provisioning scripts
+# COMMON_SCRIPT = <<-SCRIPT
+#   echo "Common script"
+# SCRIPT
+
+# Example:
+#   "VM_NAME" => {
+#     cpus: 2,
+#     memory: "2048",
+#     image: "nobreak-labs/rocky-9",
+#     networks: ["192.168.56.10"],
+#     disks: ["10GB", "20GB"],
+#     scripts: [COMMON_SCRIPT, "./setup.sh"]
+#   },
+
+# VM Configuration
+VM_CONFIG = {
+  "rocky-node1" => {
+    networks: ["192.168.56.10"]
+  },
+  # "rocky-node2" => {
+  #   networks: ["192.168.56.20"]
+  # },
+}
+
+Vagrant.configure("2") do |config|
+  
+  VM_CONFIG.each do |node_name, node_config|
+    config.vm.define node_name do |node|
+      node.vm.hostname = node_name
+      node.vm.box = node_config[:image] || VM_IMAGE
+      node.vm.provider "virtualbox" do |vb|
+        vb.memory = node_config[:memory] || VM_MEMORY
+        vb.cpus = node_config[:cpus] || VM_CPUS
+        vb.name = node_name
+      end
+      node.vm.synced_folder ".", "/vagrant", disabled: true
+      
+      # Network config
+      if node_config[:networks]
+        node_config[:networks].each do |ip|
+          node.vm.network "private_network", ip: ip
+        end
+      end
+
+      # Provision scripts
+      if node_config[:scripts]
+        node_config[:scripts].each do |script|
+          if script.include?("\n")
+            node.vm.provision "shell", inline: script
+          else
+            node.vm.provision "shell", path: script
+          end
+        end
+      end
+      
+      # Add disks
+      if node_config[:disks]
+        node_config[:disks].each_with_index do |size, i|
+          disk_name = "disk#{i + 1}"
+          node.vm.disk :disk, size: size, name: disk_name
+        end
+      end
+    end
+  end
+end
