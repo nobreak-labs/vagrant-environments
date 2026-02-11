@@ -1,0 +1,89 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Global VM configuration
+VM_IMAGE = "nobreak-labs/ubuntu-noble"
+VM_CPUS = 2
+VM_MEMORY = "2048"
+
+# Provisioning scripts
+CHANGE_APT_REPO = <<-SCRIPT
+  ARCH=$(uname -m)
+  RELEASE=$(lsb_release -cs)
+  if [ "$RELEASE" = "jammy" ]; then
+    # Ubuntu 22.04
+    if [ "$ARCH" = "x86_64" ]; then
+      sed -i 's/archive.ubuntu.com\\|kr.archive.ubuntu.com\\|security.ubuntu.com/ftp.kaist.ac.kr/g' /etc/apt/sources.list
+    elif [ "$ARCH" = "aarch64" ]; then
+      sed -i 's/ports.ubuntu.com/ftp.kaist.ac.kr/g' /etc/apt/sources.list
+    fi
+  elif [ "$RELEASE" = "noble" ]; then
+    # Ubuntu 24.04
+    if [ "$ARCH" = "x86_64" ]; then
+      sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources
+    elif [ "$ARCH" = "aarch64" ]; then
+      sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu-ports/|g' /etc/apt/sources.list.d/ubuntu.sources
+    fi
+  fi
+SCRIPT
+
+# VM Configuration
+VM_CONFIG = {
+  "ansible-control" => {
+    image: VM_IMAGE,
+    networks: ["192.168.56.101"],
+    scripts: [CHANGE_APT_REPO]
+  },
+  "ansible-node1" => {
+    image: VM_IMAGE,
+    networks: ["192.168.56.102"],
+    scripts: [CHANGE_APT_REPO]
+  },
+  "ansible-node2" => {
+    image: VM_IMAGE,
+    networks: ["192.168.56.103"],
+    scripts: [CHANGE_APT_REPO]
+  },  
+}
+
+Vagrant.configure("2") do |config|
+  
+  VM_CONFIG.each do |node_name, node_config|
+    config.vm.define node_name do |node|
+      node.vm.hostname = node_name
+      node.vm.box = node_config[:image] || VM_IMAGE
+      node.vm.provider "virtualbox" do |vb|
+        vb.memory = node_config[:memory] || VM_MEMORY
+        vb.cpus = node_config[:cpus] || VM_CPUS
+        vb.name = node_name
+      end
+      node.vm.synced_folder ".", "/vagrant", disabled: true
+      
+      # Network config
+      if node_config[:networks]
+        node_config[:networks].each do |ip|
+          node.vm.network "private_network", ip: ip
+        end
+      end
+
+      # Provision scripts
+      if node_config[:scripts]
+        node_config[:scripts].each do |script|
+          if script.include?("\n")
+            node.vm.provision "shell", inline: script
+          else
+            node.vm.provision "shell", path: script
+          end
+        end
+      end
+      
+      # Add disks
+      if node_config[:disks]
+        node_config[:disks].each_with_index do |size, i|
+          disk_name = "disk#{i + 1}"
+          node.vm.disk :disk, size: size, name: disk_name
+        end
+      end
+    end
+  end
+end
