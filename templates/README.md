@@ -18,7 +18,7 @@
 ### 1. 전역 설정 (Global Configuration)
 모든 VM에 기본으로 적용될 이미지와 리소스를 정의합니다.
 ```ruby
-VM_IMAGE = "nobreak-labs/rocky-9"
+VM_IMAGE = "nobreak-labs/rocky-10"
 VM_CPUS = 2
 VM_MEMORY = "2048"
 ```

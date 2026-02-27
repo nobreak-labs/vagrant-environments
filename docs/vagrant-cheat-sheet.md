@@ -19,6 +19,7 @@
     - `vagrant init nobreak-labs/ubuntu-jammy`
     - `vagrant init nobreak-labs/ubuntu-noble`
     - `vagrant init nobreak-labs/rocky-9`
+    - `vagrant init nobreak-labs/rocky-10`
 
 ```ruby
 # -*- mode: ruby -*-

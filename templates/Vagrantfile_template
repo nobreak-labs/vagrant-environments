@@ -5,7 +5,7 @@
 #
 # [Usage Guide]
 # Define your global VM configuration in the VM_IMAGE, VM_CPUS, and VM_MEMORY variables below.
-VM_IMAGE = "nobreak-labs/rocky-9"
+VM_IMAGE = "nobreak-labs/rocky-10"
 VM_CPUS = 2
 VM_MEMORY = "2048"
 
@@ -58,7 +58,7 @@ SCRIPT
 #   "VM_NAME" => {
 #     cpus: 2,
 #     memory: "2048",
-#     image: "nobreak-labs/rocky-9",
+#     image: "nobreak-labs/rocky-10",
 #     networks: ["192.168.56.10"],
 #     disks: ["10GB", "20GB"],
 #     scripts: [COMMON_SCRIPT, "./setup.sh"]
