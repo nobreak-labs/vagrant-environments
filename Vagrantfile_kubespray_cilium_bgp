@@ -36,6 +36,9 @@ FRR_INSTALL = <<-SCRIPT
 SCRIPT
 
 FRR_PRECONFIG = <<-SCRIPT
+  # Delete the default route
+  #ip route del 0.0.0.0/0 via 10.0.2.2
+
   # Enable IPv4/IPv6 Forwarding
   sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
   sed -i 's/#net.ipv6.conf.all.forwarding=1/net.ipv6.conf.all.forwarding=1/g' /etc/sysctl.conf
@@ -89,28 +92,31 @@ SCRIPT
 # VM Configuration
 VM_CONFIG = {
   "kube-control1" => {
+    memory: "4096",
     networks: ["192.168.56.11"],
     scripts: [UBUNTU_CHANGE_APT_REPO]
   },
   "kube-node1" => {
+    memory: "3072",
     networks: ["192.168.56.21"],
-    # disks: ["10GB"],
+    disks: ["10GB"],
     scripts: [UBUNTU_CHANGE_APT_REPO]
   },
   "kube-node2" => {
+    memory: "3072",
     networks: ["192.168.56.22"],
-    # disks: ["10GB"],
+    disks: ["10GB"],
     scripts: [UBUNTU_CHANGE_APT_REPO]
   },
   "kube-node3" => {
+    memory: "3072",
     networks: ["192.168.56.23"],
-    # disks: ["10GB"],
+    disks: ["10GB"],
     scripts: [UBUNTU_CHANGE_APT_REPO]
   },
   "kube-router" => {
-    cpus: 1,
     memory: "1024",
-    networks: ["192.168.56.254"],
+    networks: ["192.168.56.254", "192.168.57.254"],
     scripts: [
       UBUNTU_CHANGE_APT_REPO,
       FRR_INSTALL,
