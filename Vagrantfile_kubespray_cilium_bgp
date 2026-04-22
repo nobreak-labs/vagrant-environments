@@ -1,0 +1,163 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Global VM configuration
+VM_IMAGE = "nobreak-labs/ubuntu-noble"
+VM_CPUS = 2
+VM_MEMORY = "3072"
+
+# Provisioning scripts
+UBUNTU_CHANGE_APT_REPO = <<-SCRIPT
+  ARCH=$(uname -m)
+  RELEASE=$(lsb_release -cs)
+  if [ "$RELEASE" = "jammy" ]; then
+    # Ubuntu 22.04
+    if [ "$ARCH" = "x86_64" ]; then
+      sed -i 's/archive.ubuntu.com\\|kr.archive.ubuntu.com\\|security.ubuntu.com/ftp.kaist.ac.kr/g' /etc/apt/sources.list
+    elif [ "$ARCH" = "aarch64" ]; then
+      sed -i 's/ports.ubuntu.com/ftp.kaist.ac.kr/g' /etc/apt/sources.list
+    fi
+  elif [ "$RELEASE" = "noble" ]; then
+    # Ubuntu 24.04
+    if [ "$ARCH" = "x86_64" ]; then
+      sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources
+    elif [ "$ARCH" = "aarch64" ]; then
+      sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu-ports/|g' /etc/apt/sources.list.d/ubuntu.sources
+    fi
+  fi
+SCRIPT
+
+FRR_INSTALL = <<-SCRIPT
+  # FRR Installation
+  curl -s https://deb.frrouting.org/frr/keys.gpg | tee /usr/share/keyrings/frrouting.gpg > /dev/null
+  FRRVER="frr-stable"
+  echo deb '[signed-by=/usr/share/keyrings/frrouting.gpg]' https://deb.frrouting.org/frr $(lsb_release -s -c) $FRRVER | tee -a /etc/apt/sources.list.d/frr.list
+  apt-get update && apt-get install -y frr frr-pythontools
+SCRIPT
+
+FRR_PRECONFIG = <<-SCRIPT
+  # Enable IPv4/IPv6 Forwarding
+  sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
+  sed -i 's/#net.ipv6.conf.all.forwarding=1/net.ipv6.conf.all.forwarding=1/g' /etc/sysctl.conf
+  sysctl -p
+SCRIPT
+
+FRR_CONFIG = <<-SCRIPT
+  sed -i 's/bgpd=no/bgpd=yes/g' /etc/frr/daemons
+  # sed -i 's/ospfd=no/ospfd=yes/g' /etc/frr/daemons
+  # sed -i 's/ripd=no/ripd=yes/g' /etc/frr/daemons
+  # sed -i 's/isisd=no/isisd=yes/g' /etc/frr/daemons
+  # sed -i 's/eigrpd=no/eigrpd=yes/g' /etc/frr/daemons
+  # sed -i 's/vrrpd=no/vrrpd=yes/g' /etc/frr/daemons
+
+  cat << 'EOF' | tee /etc/frr/frr.conf
+frr version 10.6.0
+frr defaults traditional
+hostname kube-router
+log syslog informational
+no ipv6 forwarding
+service integrated-vtysh-config
+
+router bgp 65000
+  bgp router-id 192.168.56.254
+  no bgp ebgp-requires-policy
+
+  neighbor 192.168.56.11 remote-as 65101
+  neighbor 192.168.56.11 description kube-control1
+  neighbor 192.168.56.21 remote-as 65102
+  neighbor 192.168.56.21 description kube-node1
+  neighbor 192.168.56.22 remote-as 65103
+  neighbor 192.168.56.22 description kube-node2
+  neighbor 192.168.56.23 remote-as 65104
+  neighbor 192.168.56.23 description kube-node3
+
+  address-family ipv4 unicast
+    neighbor 192.168.56.11 activate
+    neighbor 192.168.56.11 soft-reconfiguration inbound
+    neighbor 192.168.56.21 activate
+    neighbor 192.168.56.21 soft-reconfiguration inbound
+    neighbor 192.168.56.22 activate
+    neighbor 192.168.56.22 soft-reconfiguration inbound
+    neighbor 192.168.56.23 activate
+    neighbor 192.168.56.23 soft-reconfiguration inbound
+    redistribute connected
+  exit-address-family
+EOF
+  systemctl restart frr
+SCRIPT
+
+# VM Configuration
+VM_CONFIG = {
+  "kube-control1" => {
+    networks: ["192.168.56.11"],
+    scripts: [UBUNTU_CHANGE_APT_REPO]
+  },
+  "kube-node1" => {
+    networks: ["192.168.56.21"],
+    # disks: ["10GB"],
+    scripts: [UBUNTU_CHANGE_APT_REPO]
+  },
+  "kube-node2" => {
+    networks: ["192.168.56.22"],
+    # disks: ["10GB"],
+    scripts: [UBUNTU_CHANGE_APT_REPO]
+  },
+  "kube-node3" => {
+    networks: ["192.168.56.23"],
+    # disks: ["10GB"],
+    scripts: [UBUNTU_CHANGE_APT_REPO]
+  },
+  "kube-router" => {
+    cpus: 1,
+    memory: "1024",
+    networks: ["192.168.56.254"],
+    scripts: [
+      UBUNTU_CHANGE_APT_REPO,
+      FRR_INSTALL,
+      FRR_PRECONFIG,
+      FRR_CONFIG
+    ]
+  }
+}
+
+Vagrant.configure("2") do |config|
+  
+  VM_CONFIG.each do |node_name, node_config|
+    config.vm.define node_name do |node|
+      node.vm.hostname = node_name
+      node.vm.box = node_config[:image] || VM_IMAGE
+      node.vm.provider "virtualbox" do |vb|
+        vb.memory = node_config[:memory] || VM_MEMORY
+        vb.cpus = node_config[:cpus] || VM_CPUS
+        vb.name = node_name
+      end
+      node.vm.synced_folder ".", "/vagrant", disabled: true
+      
+      # Network config
+      if node_config[:networks]
+        node_config[:networks].each do |ip|
+          node.vm.network "private_network", ip: ip, nic_type: "virtio"
+        end
+      end
+
+      # Provision scripts
+      if node_config[:scripts]
+        node_config[:scripts].each do |script|
+          if script.include?("\n")
+            node.vm.provision "shell", inline: script
+          else
+            node.vm.provision "shell", path: script
+          end
+        end
+      end
+      
+      # Add disks
+      if node_config[:disks]
+        node_config[:disks].each_with_index do |size, i|
+          disk_name = "disk#{i + 1}"
+          node.vm.disk :disk, size: size, name: disk_name
+        end
+      end
+    end
+  end
+end

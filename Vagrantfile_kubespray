@@ -4,7 +4,7 @@
 # Global VM configuration
 VM_IMAGE = "nobreak-labs/ubuntu-noble"
 VM_CPUS = 2
-VM_MEMORY = "2048"
+VM_MEMORY = "3072"
 
 # Provisioning scripts
 UBUNTU_CHANGE_APT_REPO = <<-SCRIPT

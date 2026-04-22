@@ -2,32 +2,39 @@
 # vi: set ft=ruby :
 
 # Global VM configuration
-VM_IMAGE = "nobreak-labs/rocky-10"
+VM_IMAGE = "nobreak-labs/ubuntu-noble"
 VM_CPUS = 2
 VM_MEMORY = "2048"
 
-# Provisioning scripts
-# COMMON_SCRIPT = <<-SCRIPT
-#   echo "Common script"
-# SCRIPT
-
-# Example:
-#   "VM_NAME" => {
-#     cpus: 2,
-#     memory: "2048",
-#     image: "nobreak-labs/rocky-10",
-#     networks: ["192.168.56.10"],
-#     disks: ["10GB", "20GB"],
-#     scripts: [COMMON_SCRIPT, "./setup.sh"]
-#   },
+UBUNTU_CHANGE_APT_REPO = <<-SCRIPT
+  ARCH=$(uname -m)
+  RELEASE=$(lsb_release -cs)
+  if [ "$RELEASE" = "jammy" ]; then
+    # Ubuntu 22.04
+    if [ "$ARCH" = "x86_64" ]; then
+      sed -i 's/archive.ubuntu.com\\|kr.archive.ubuntu.com\\|security.ubuntu.com/ftp.kaist.ac.kr/g' /etc/apt/sources.list
+    elif [ "$ARCH" = "aarch64" ]; then
+      sed -i 's/ports.ubuntu.com/ftp.kaist.ac.kr/g' /etc/apt/sources.list
+    fi
+  elif [ "$RELEASE" = "noble" ]; then
+    # Ubuntu 24.04
+    if [ "$ARCH" = "x86_64" ]; then
+      sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu/|g' /etc/apt/sources.list.d/ubuntu.sources
+    elif [ "$ARCH" = "aarch64" ]; then
+      sed -i 's|^URIs:.*|URIs: http://ftp.kaist.ac.kr/ubuntu-ports/|g' /etc/apt/sources.list.d/ubuntu.sources
+    fi
+  fi
+SCRIPT
 
 # VM Configuration
 VM_CONFIG = {
-  "rocky-node1" => {
-    networks: ["192.168.56.10"]
+  "ubuntu-node1" => {
+    networks: ["192.168.56.10"],
+    scripts: [UBUNTU_CHANGE_APT_REPO]
   },
-  # "rocky-node2" => {
-  #   networks: ["192.168.56.20"]
+  # "ubuntu-node2" => {
+  #   networks: ["192.168.56.20"],
+  #   scripts: [UBUNTU_CHANGE_APT_REPO]
   # },
 }
 

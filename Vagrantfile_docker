@@ -7,7 +7,7 @@ VM_CPUS = 2
 VM_MEMORY = "4096"
 
 # Provisioning scripts
-CHANGE_APT_REPO = <<-SCRIPT
+UBUNTU_CHANGE_APT_REPO = <<-SCRIPT
   ARCH=$(uname -m)
   RELEASE=$(lsb_release -cs)
   if [ "$RELEASE" = "jammy" ]; then
@@ -52,7 +52,7 @@ VM_CONFIG = {
     memory: "4096",
     image: VM_IMAGE,
     networks: ["192.168.56.101"],
-    scripts: [CHANGE_APT_REPO, INSTALL_DOCKER]
+    scripts: [UBUNTU_CHANGE_APT_REPO, INSTALL_DOCKER]
   }
 }
 
